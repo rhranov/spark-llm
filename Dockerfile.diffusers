@@ -1,0 +1,54 @@
+# diffusers engine image.
+# Built once: docker build -f Dockerfile.diffusers -t spark-llm-diffusers:latest .
+#
+# MEASURED 2026-07-23: originally built FROM nvcr.io/nvidia/vllm:26.06-py3 (the
+# vLLM base already proven to work for this project's own text models) on the
+# theory that its known-working CUDA/torch stack would carry over safely. It did
+# NOT — Qwen-Image produced pure static/noise on every generation, no errors, a
+# structurally valid PNG every time. Root cause (confirmed via a working
+# nvidia.com/developer forum reproducer + a side-by-side base-image swap that
+# fixed it immediately, same model/diffusers version, only the base changed):
+# that vLLM image's bundled, custom-patched torch build has a silently broken
+# scaled_dot_product_attention EFFICIENT_ATTENTION kernel on GB10 (sm_121) — the
+# dispatcher falls through to a "survivor" kernel producing garbage with no
+# NaN/Inf, so nothing errors, it just draws noise. vLLM itself never hits this
+# because its causal-LM attention pattern takes a different, unaffected code
+# path; a diffusion transformer's bidirectional attention does not.
+#
+# FIX: build FROM the NVIDIA PyTorch NGC image instead — confirmed by the same
+# forum thread as NOT carrying the sm_121 bug (unlike community-rebuilt or
+# vLLM-bundled torch, this image ships the proper multi-arch kernel fallback).
+# Verified MEASURED on this exact machine: real, coherent output (a legible
+# "Qwen Coffee" chalkboard sign, matching the prompt) vs. noise on the old base.
+FROM nvcr.io/nvidia/pytorch:26.03-py3
+
+# transformers pinned/upgraded explicitly: this image's bundled version predates
+# Qwen2.5-VL support (Qwen-Image's text encoder) and diffusers' from_pretrained
+# fails outright without a newer one (AttributeError in diffusers' lazy-import
+# dummy-object fallback) — MEASURED, not theoretical; this exact failure was hit
+# and fixed during verification.
+#
+# Versions pinned exactly 2026-07-23 (were `-U`, i.e. "whatever's newest today"
+# — a real reproducibility gap: a rebuild next month could silently pull
+# different versions than the ones actually verified working here, with no
+# guarantee the noise bug — or a new one — doesn't reappear. Every other
+# artifact in this project pins an exact revision (HF model hashes,
+# manifest-lock.json); this now matches that discipline. torch itself is NOT
+# pinned here — it stays whatever this base image bundles (2.11.0a0+a6c236b9fd
+# .nv26.03.46836102 at time of writing), since that's the thing that must
+# never get silently replaced by pip resolving a generic wheel.
+RUN pip install --no-cache-dir \
+    diffusers==0.39.0 \
+    transformers==5.14.1 \
+    accelerate==1.14.0 \
+    fastapi==0.139.2 \
+    uvicorn==0.51.0
+
+# NOTE: no build-time CUDA check here — `docker build` RUN steps do not get
+# --gpus passthrough (that's a `docker run`-only flag), so `torch.cuda.is_available()`
+# is always False at build time regardless of whether the image is actually fine.
+# The real check is a `docker run --gpus all` smoke test AFTER the build (see
+# install.sh) — that only proves CUDA is reachable, NOT that attention kernels
+# are numerically correct (the actual bug class here produces no error and no
+# NaN/Inf) — the real verification is a real generation compared by eye, done
+# once per base-image change, not on every build.

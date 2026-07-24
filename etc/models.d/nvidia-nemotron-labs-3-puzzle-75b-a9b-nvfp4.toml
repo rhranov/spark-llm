@@ -1,0 +1,15 @@
+# Example declaration tuned and measured on an NVIDIA DGX Spark.
+# Review model-specific flags against your checkpoint revision.
+
+engine = "vllm-docker"
+image = "nvcr.io/nvidia/vllm:26.06-py3"
+weights = "/models/NVIDIA-Nemotron-Labs-3-Puzzle-75B-A9B-NVFP4"
+served_name = "nvidia-nemotron-labs-3-puzzle-75b-a9b-nvfp4"
+gpu_memory_utilization = 0.6
+max_model_len = 262144
+est_weights_gib = 50
+extra_flags = [
+  "--trust-remote-code",
+  "--tool-call-parser", "qwen3_coder",
+  "--enable-auto-tool-choice",
+]

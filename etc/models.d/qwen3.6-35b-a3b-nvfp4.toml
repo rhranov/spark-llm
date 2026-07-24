@@ -1,0 +1,31 @@
+# Example declaration tuned and measured on an NVIDIA DGX Spark.
+# Review model-specific flags against your checkpoint revision.
+
+engine = "vllm-docker"
+image = "nvcr.io/nvidia/vllm:26.06-py3"
+
+weights = "/models/Qwen3.6-35B-A3B-NVFP4"
+
+served_name = "qwen3.6-35b-a3b-nvfp4"
+
+gpu_memory_utilization = 0.4
+max_model_len = 262144
+
+est_weights_gib = 22
+
+extra_flags = [
+  "--tensor-parallel-size", "1",
+  "--trust-remote-code",
+  "--kv-cache-dtype", "fp8",
+  "--attention-backend", "flashinfer",
+  "--moe-backend", "marlin",
+  "--max-num-seqs", "4",
+  "--max-num-batched-tokens", "8192",
+  "--enable-chunked-prefill",
+  "--async-scheduling",
+  "--enable-prefix-caching",
+  "--load-format", "fastsafetensors",
+  "--reasoning-parser", "qwen3",
+  "--tool-call-parser", "qwen3_xml",
+  "--enable-auto-tool-choice",
+]

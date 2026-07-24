@@ -1,0 +1,10 @@
+# Example declaration tuned and measured on an NVIDIA DGX Spark.
+# Review model-specific flags against your checkpoint revision.
+
+engine = "diffusers"
+weights = "/models/Qwen-Image-2512"
+served_name = "qwen-image-2512"
+est_weights_gb = 58
+default_size = "1024x1024"
+num_inference_steps = 50
+true_cfg_scale = 4.0

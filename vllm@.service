@@ -1,0 +1,43 @@
+# spark-llm slot unit (template). Install: /etc/systemd/system/vllm@.service
+# One instance per slot: vllm@brain.service. NOT installed in test mode —
+# installation is a live-mode step requiring root (proposal §9).
+
+[Unit]
+Description=spark-llm slot %i (ephemeral vLLM container vllm-%i)
+After=docker.service
+Requires=docker.service
+# Crash-loop containment (§8.5): a declaration that cannot start becomes a
+# visibly failed unit, not an endless reload of very large weights.
+StartLimitIntervalSec=600
+StartLimitBurst=3
+
+[Service]
+# One command path (§7.2): the unit runs the same composition code as the CLI.
+# `docker run --rm` in the foreground: no persistent container object exists,
+# logs land in the journal, a failed port bind leaves nothing behind (§6.3).
+# Engine-agnostic stop: systemd's SIGTERM reaches the foreground process —
+# `docker run` forwards it into the container (--sig-proxy default), and
+# llama-server handles TERM directly. No engine-specific ExecStop needed.
+# Clear any stale container holding this slot's name before starting.
+# MEASURED 2026-07-20: `docker run --rm` whose port bind fails leaves a
+# 'Created' corpse that blocks the name — it cost the first cutover attempt.
+# The '-' prefix ignores the error when there is nothing to remove (or the
+# slot runs a non-docker engine).
+ExecStartPre=-/usr/bin/docker rm -f vllm-%i
+ExecStart=/usr/local/bin/spark-llm launch %i
+# Server output goes to an app-owned log file (readable by the console's L key
+# and by monitoring accounts), not only the root-owned journal. Lesson from the
+# 2026-07-19 canary drill: a crash's last words must never be root-only —
+# the SIGABRT diagnosis stalled precisely because they were.
+StandardOutput=append:/etc/spark-llm/logs/slot-%i.log
+StandardError=append:/etc/spark-llm/logs/slot-%i.log
+TimeoutStopSec=60
+Restart=on-failure
+RestartSec=10
+# OOM containment (§8.3): if memory runs out, the inference server is the
+# preferred victim — never the agent gateway. (Gateway unit should carry a
+# negative OOMScoreAdjust; that is a separate, gated change.)
+OOMScoreAdjust=500
+
+[Install]
+WantedBy=multi-user.target

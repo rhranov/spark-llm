@@ -1,0 +1,27 @@
+# Example declaration tuned and measured on an NVIDIA DGX Spark.
+# Review model-specific flags against your checkpoint revision.
+
+engine = "vllm-docker"
+image = "nvcr.io/nvidia/vllm:26.06-py3"
+
+weights = "/models/Qwen3-VL-30B-A3B-Instruct-FP8"
+
+served_name = "qwen3-vl-30b-a3b-instruct-fp8"
+
+gpu_memory_utilization = 0.35
+max_model_len = 262144
+
+est_weights_gib = 30
+
+extra_flags = [
+  "--tensor-parallel-size", "1",
+  "--trust-remote-code",
+  "--kv-cache-dtype", "fp8",
+  "--attention-backend", "flashinfer",
+  "--max-num-seqs", "4",
+  "--max-num-batched-tokens", "8192",
+  "--enable-chunked-prefill",
+  "--async-scheduling",
+  "--enable-prefix-caching",
+  "--load-format", "fastsafetensors",
+]

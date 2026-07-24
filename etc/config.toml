@@ -1,0 +1,44 @@
+# spark-llm operator settings for an NVIDIA DGX Spark.
+#
+# Keep model weights under one directory. Consumers use stable aliases and
+# ports; model declarations describe how each checkpoint is served.
+
+models_dir = "/srv/models"
+
+# Safe default: APIs are reachable only from this DGX Spark. Set to "0.0.0.0"
+# only when a firewall or authenticated reverse proxy protects the endpoints.
+listen_host = "127.0.0.1"
+
+# A declaration serving a text consumer must support at least this context
+# multiplied by headroom_factor.
+consumer_context_length = 131072
+headroom_factor = 2
+
+# DGX Spark has 128 GB of unified memory. Keep one consistent operator ceiling
+# below the raw OS-reported capacity so pre-flight checks and Docker limits agree.
+max_memory_gb = 128
+min_free_gib_after_load = 4
+readiness_timeout_s = 900
+
+[[consumers]]
+name = "Primary LLM API"
+port = 8000
+alias = "local-llm"
+requires_tool_calling = true
+
+[[consumers]]
+name = "Image Generation API"
+port = 8001
+alias = "local-image"
+required_engine = "diffusers"
+
+[engines]
+llamacpp_bin = "/usr/local/lib/spark-llm/llama-server"
+
+[auto]
+image = "nvcr.io/nvidia/vllm:26.06-py3"
+diffusers_image = "spark-llm-diffusers:latest"
+kv_margin_gib = 8
+weights_overhead = 1.15
+extra_flags = ["--trust-remote-code"]
+llamacpp_extra_flags = ["--flash-attn", "on", "-ctk", "q8_0", "-ctv", "q8_0"]

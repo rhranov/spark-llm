@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+*.log
+.pytest_cache/
+.venv/
+venv/
+loaded.toml
+audit.log
+logs/
+mode
+.env
+.env.*
+!.env.example
