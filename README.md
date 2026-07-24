@@ -1,5 +1,7 @@
 # spark-llm
 
+![Spark-LLM terminal dashboard showing loaded models, stable endpoints, memory usage, health, and model capacity](docs/spark-llm-dashboard.png)
+
 Model lifecycle management for an NVIDIA DGX Spark: load, unload, inspect, and
 promote local LLMs behind stable OpenAI-compatible endpoints.
 
