@@ -8,7 +8,7 @@ loads before they can overcommit the DGX Spark's unified memory. It supports
 vLLM containers, llama.cpp GGUF models, and a Diffusers image-generation
 service from one terminal UI and CLI.
 
-## What it demonstrates
+## Capabilities
 
 - Memory-aware orchestration on a 128 GB unified-memory system
 - Stable consumer aliases while the backing model changes
